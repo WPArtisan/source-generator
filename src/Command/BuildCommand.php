@@ -149,10 +149,8 @@ class BuildCommand extends Command
 
                         if ( 'php' === $fileInfo->getExtension() )
                         {
-                            if ( './includes/class-multisite-admin.php' == $fileInfo->getPathname() ) {
                             // Parse for package specific code.
                             $this->parseFile( $newPath );
-                            }
                         }
 
                     }
