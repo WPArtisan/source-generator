@@ -149,8 +149,10 @@ class BuildCommand extends Command
 
                         if ( 'php' === $fileInfo->getExtension() )
                         {
+                            if ( './includes/class-multisite-admin.php' == $fileInfo->getPathname() ) {
                             // Parse for package specific code.
                             $this->parseFile( $newPath );
+                            }
                         }
 
                     }
@@ -173,8 +175,11 @@ class BuildCommand extends Command
 
     }
 
-    /*
+    /**
      * Parses each file and remove package specific code.
+     *
+     * @access public
+     * @return void
      */
     public function parseFile( $path ) {
 
@@ -203,7 +208,7 @@ class BuildCommand extends Command
                     }
 
                     // We only want IF statments this time
-                    if ( $this->isSourceFunction( $i ) && in_array( $package, $this->getFunctionArguments( $i ) ) )
+                    if ( $this->isSourceFunction( $i ) && in_array( $this->currentPackage, $this->getFunctionArguments( $i ) ) )
                     {
 
                         // Find start of the IF statement
@@ -344,12 +349,10 @@ class BuildCommand extends Command
 
                 }
 
-                if ( 'T_STRING' == token_name( $token[0] ) &&
-                    (
-                        ( false !== strrpos( $token[1], '__is' . ucfirst( $package ) ) )
-                        ||
-                        ( $this->isSourceFunction( $i ) && in_array( $package, $this->getFunctionArguments( $i ) ) )
-                    )
+                if (
+                    ( $this->isSourceFunction( $i ) && in_array( $package, $this->getFunctionArguments( $i ) ) )
+                    ||
+                    $this->isNamedFunction( $i, $package )
                 ) {
 
                     // Find opening IF statement
@@ -424,7 +427,6 @@ class BuildCommand extends Command
 
         }
 
-
         // Run the loop again so we can put the file back together.
         // Stores the parts of the file so it can be put back together again.
         $fileContents = array();
@@ -463,6 +465,30 @@ class BuildCommand extends Command
      */
     public function isSourceFunction( $index ) {
         return is_array( $this->tokens[ $index ] ) && '__is' === $this->tokens[ $index ][1];
+    }
+
+    /**
+     * If it's a function that's got a package name in it's name.
+     *
+     * @access public
+     * @param  int  $index
+     * @return boolean
+     */
+    public function isNamedFunction( $index, $package ) {
+        // Could be a function or a string.
+        // Check it's a function.
+        if (
+            is_array( $this->tokens[ $index ] ) &&
+            false !== strrpos( $this->tokens[ $index ][1], '__is' . ucfirst( $package ) )
+        ) {
+            // If the next element is an opening bracket then it's probably a function.
+            if ( ! is_array( $this->tokens[ $index + 1 ] ) && '(' === $this->tokens[ $index + 1 ] ) {
+                return true;
+            }
+            return false;
+        }
+
+        return false;
     }
 
     /**
