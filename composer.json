@@ -1,0 +1,20 @@
+{
+    "name": "wpartisan/source-generator",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Edward D",
+            "email": "edward@wpartisan.me"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "symfony/console": "^3.2",
+        "symfony/filesystem": "^3.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "WPArtisan\\": "src/WPArtisan"
+        }
+    }
+}
