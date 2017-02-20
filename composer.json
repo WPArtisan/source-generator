@@ -15,7 +15,8 @@
     "autoload": {
         "psr-4": {
             "WPArtisan\\": "src"
-        }
+        },
+        "files": ["src/functions.php"]
     },
     "bin": ["bin/wpartisan"]
 }

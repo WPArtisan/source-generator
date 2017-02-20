@@ -1,6 +1,4 @@
-<?php
-
-namespace WPArtisan\Command;
+<?php namespace WPArtisan\Command;
 
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
@@ -16,11 +14,14 @@ class BuildCommand extends Command
 {
 
     public $packages = [
-                'free' => 'wp-native-articles',
-                'premium' => 'wp-native-articles-premium'
-            ];
+        'source'  => '==IGNORED==',
+        'free'    => 'wp-native-articles',
+        'premium' => 'wp-native-articles-premium',
+    ];
 
     public $currentPackage = null;
+
+    public $tokens = null;
 
     protected function configure()
     {
@@ -155,6 +156,11 @@ class BuildCommand extends Command
 
                 }
 
+                // Remove the source build.
+                // This only exists as a slightly hacky way of having source
+                // only cmds.
+                $fs->remove( "./{$buildDir}/source" );
+
                 $output->writeln( '<info>Built package: ' . $this->packages[ $package ] . '</info>' );
 
             }
@@ -174,7 +180,7 @@ class BuildCommand extends Command
         $packagesToParse = array_keys( $this->packages );
 
         // Tokenise the file.
-        $tokens = token_get_all( file_get_contents( $path ) );
+        $this->tokens = token_get_all( file_get_contents( $path ) );
 
         // Remove these parts from the file.
         $elementsToRemove = array();
@@ -187,7 +193,7 @@ class BuildCommand extends Command
             {
 
                 // Iterator over the tokens.
-                foreach ( $tokens as $i => $token )
+                foreach ( $this->tokens as $i => $token )
                 {
                     // If it's not an array continue.
                     if ( ! is_array( $token ) )
@@ -196,7 +202,7 @@ class BuildCommand extends Command
                     }
 
                     // We only want IF statments this time
-                    if ( 'T_STRING' == token_name( $token[0] ) && $token[1] === '__is' . ucfirst( $package ) )
+                    if ( $this->isSourceFunction( $i ) && in_array( $package, $this->getFunctionArguments( $i ) ) )
                     {
 
                         // Find start of the IF statement
@@ -204,12 +210,12 @@ class BuildCommand extends Command
                         $removeFrom = null;
                         while ( $k >= 0 && is_null( $removeFrom ) )
                         {
-                            if ( is_array( $tokens[ $k ] ) && 'T_IF' === token_name( $tokens[ $k ][0] ) )
+                            if ( is_array( $this->tokens[ $k ] ) && 'T_IF' === token_name( $this->tokens[ $k ][0] ) )
                             {
                                 $removeFrom = $k;
 
                                 // Remove 1 line break before the start to tidy up.
-                                if ( 'T_WHITESPACE' === token_name( $tokens[ $removeFrom - 1 ][0] ) ) {
+                                if ( 'T_WHITESPACE' === token_name( $this->tokens[ $removeFrom - 1 ][0] ) ) {
                                     $removeFrom = $removeFrom - 1;
                                 }
 
@@ -221,9 +227,9 @@ class BuildCommand extends Command
                         // Find opening IF statement bracket
                         $k = $i + 1;
                         $removeTo = null;
-                        while ( $k <= count( $tokens ) && is_null( $removeTo ) )
+                        while ( $k <= count( $this->tokens ) && is_null( $removeTo ) )
                         {
-                            if ( ! is_array( $tokens[ $k ] ) && '{' === $tokens[ $k ] )
+                            if ( ! is_array( $this->tokens[ $k ] ) && '{' === $this->tokens[ $k ] )
                             {
                                 $removeTo = $k;
                                 break;
@@ -238,14 +244,14 @@ class BuildCommand extends Command
                         $j = $i + 1;
                         $bracketsFound = 0;
                         $closingBracketLocation = null;
-                        while ( $j < count( $tokens ) && is_null( $closingBracketLocation ) ) {
+                        while ( $j < count( $this->tokens ) && is_null( $closingBracketLocation ) ) {
 
                             // If it's not the token we're looking for.
-                            if ( is_array( $tokens[ $j ] ) || '}' !== $tokens[ $j ] ) {
+                            if ( is_array( $this->tokens[ $j ] ) || '}' !== $this->tokens[ $j ] ) {
 
                                 // If it's an opening bracket then increment the closing bracket
                                 // number to search for.
-                                if ( '{' === $tokens[ $j ] ) {
+                                if ( '{' === $this->tokens[ $j ] ) {
                                     $bracketsFound++;
                                 }
 
@@ -278,7 +284,7 @@ class BuildCommand extends Command
             // Iterate again but this time for all the other packages, not the current one.
 
             // Iterator over the tokens.
-            foreach ( $tokens as $i => $token )
+            foreach ( $this->tokens as $i => $token )
             {
 
                 // If it's not an array continue.
@@ -287,43 +293,44 @@ class BuildCommand extends Command
                     continue;
                 }
 
+
                 // Check for variables.
-                if ( 'T_VARIABLE' == token_name( $token[0] ) && false !== strrpos( $token[1], '__is' . ucfirst( $package ) ) ) {
+                if ( 'T_VARIABLE' == token_name( $token[0] ) && $this->isSourceFunction( $i ) && in_array( $package, $this->getFunctionArguments( $i ) ) ) {
 
                     // Find the start.
                     $removeFrom = $i;
 
                     // Back one if it's white space.
-                    if ( 'T_WHITESPACE' === token_name( $tokens[ $removeFrom - 1 ][0] ) ) {
+                    if ( 'T_WHITESPACE' === token_name( $this->tokens[ $removeFrom - 1 ][0] ) ) {
                         $removeFrom = $removeFrom - 1;
                     }
 
                     // Back one if it's an access variable.
-                    if ( in_array( token_name( $tokens[ $removeFrom - 1 ][0] ), [ 'T_PRIVATE', 'T_PROTECTED', 'T_PUBLIC' ], true ) ) {
+                    if ( in_array( token_name( $this->tokens[ $removeFrom - 1 ][0] ), [ 'T_PRIVATE', 'T_PROTECTED', 'T_PUBLIC' ], true ) ) {
                         $removeFrom = $removeFrom - 1;
                     }
 
                     // Back one if it's white space.
-                    if ( 'T_WHITESPACE' === token_name( $tokens[ $removeFrom - 1 ][0] ) ) {
+                    if ( 'T_WHITESPACE' === token_name( $this->tokens[ $removeFrom - 1 ][0] ) ) {
                         $removeFrom = $removeFrom - 1;
                     }
 
                     // Back one if it's a comment.
-                    if ( 'T_DOC_COMMENT' === token_name( $tokens[ $removeFrom - 1 ][0] ) ) {
+                    if ( 'T_DOC_COMMENT' === token_name( $this->tokens[ $removeFrom - 1 ][0] ) ) {
                         $removeFrom = $removeFrom - 1;
                     }
 
                     // Back one if it's white space.
-                    if ( 'T_WHITESPACE' === token_name( $tokens[ $removeFrom - 1 ][0] ) ) {
+                    if ( 'T_WHITESPACE' === token_name( $this->tokens[ $removeFrom - 1 ][0] ) ) {
                         $removeFrom = $removeFrom - 1;
                     }
 
                     $j = $i + 1;
                     $removeTo = null;
-                    while ( $j < count( $tokens ) && is_null( $removeTo ) ) {
+                    while ( $j < count( $this->tokens ) && is_null( $removeTo ) ) {
 
                         // If it's not the token we're looking for.
-                        if ( ! is_array( $tokens[ $j ] ) && ';' === $tokens[ $j ] ) {
+                        if ( ! is_array( $this->tokens[ $j ] ) && ';' === $this->tokens[ $j ] ) {
 
                             $removeTo = $j;
                         }
@@ -336,35 +343,35 @@ class BuildCommand extends Command
 
                 }
 
-                if ( 'T_STRING' == token_name( $token[0] ) && false !== strrpos( $token[1], '__is' . ucfirst( $package ) ) ) {
+                if ( 'T_STRING' == token_name( $token[0] ) && $this->isSourceFunction( $i ) && in_array( $package, $this->getFunctionArguments( $i ) ) ) {
 
                     // Find opening IF statement
                     $k = $i - 1;
                     $removeFrom = null;
                     while ( $k >= 0 && is_null( $removeFrom ) ) {
-                        if ( ! is_array( $tokens[ $k ] ) || ! in_array( token_name( $tokens[ $k ][0] ), [ 'T_IF', 'T_FUNCTION' ], true ) ) {
+                        if ( ! is_array( $this->tokens[ $k ] ) || ! in_array( token_name( $this->tokens[ $k ][0] ), [ 'T_IF', 'T_FUNCTION' ], true ) ) {
                             --$k;
                         } else {
 
                             $removeFrom = $k;
 
                             // If it's a function check for comments and ting.
-                            if ( 'T_FUNCTION' === token_name( $tokens[ $k ][0] ) ) {
+                            if ( 'T_FUNCTION' === token_name( $this->tokens[ $k ][0] ) ) {
 
                                 // If it's a function check for visibility.
-                                if ( in_array( token_name( $tokens[ $removeFrom - 2 ][0] ), [ 'T_PRIVATE', 'T_PROTECTED', 'T_PUBLIC' ], true ) ) {
+                                if ( in_array( token_name( $this->tokens[ $removeFrom - 2 ][0] ), [ 'T_PRIVATE', 'T_PROTECTED', 'T_PUBLIC' ], true ) ) {
                                     $removeFrom = $removeFrom - 2;
                                 }
 
                                 // If it's got a comment directly preceding it remove that as well.
-                                if ( 'T_DOC_COMMENT' === token_name( $tokens[ $removeFrom - 2 ][0] ) ) {
+                                if ( 'T_DOC_COMMENT' === token_name( $this->tokens[ $removeFrom - 2 ][0] ) ) {
                                     $removeFrom = $removeFrom - 2;
                                 }
 
                             }
 
                             // Remove 1 line break before the start to tidy up.
-                            if ( 'T_WHITESPACE' === token_name( $tokens[ $removeFrom - 1 ][0] ) ) {
+                            if ( 'T_WHITESPACE' === token_name( $this->tokens[ $removeFrom - 1 ][0] ) ) {
                                 $removeFrom = $removeFrom - 1;
                             }
 
@@ -375,14 +382,14 @@ class BuildCommand extends Command
                     $j = $i + 1;
                     $bracketsFound = 0;
                     $removeTo = null;
-                    while ( $j < count( $tokens ) && is_null( $removeTo ) ) {
+                    while ( $j < count( $this->tokens ) && is_null( $removeTo ) ) {
 
                         // If it's not the token we're looking for.
-                        if ( is_array( $tokens[ $j ] ) || '}' !== $tokens[ $j ] ) {
+                        if ( is_array( $this->tokens[ $j ] ) || '}' !== $this->tokens[ $j ] ) {
 
                             // If it's an opening bracket then increment the closing bracket
                             // number to search for.
-                            if ( '{' === $tokens[ $j ] ) {
+                            if ( '{' === $this->tokens[ $j ] ) {
                                 $bracketsFound++;
                             }
 
@@ -414,7 +421,7 @@ class BuildCommand extends Command
         // Run the loop again so we can put the file back together.
         // Stores the parts of the file so it can be put back together again.
         $fileContents = array();
-        foreach ( $tokens as $i => $token )
+        foreach ( $this->tokens as $i => $token )
         {
             $fileContents[ $i ] = is_array( $token ) ? $token[1] : $token;
         }
@@ -440,5 +447,50 @@ class BuildCommand extends Command
 
     }
 
+    /**
+     * Checks to see if a token is a source function or.
+     *
+     * @access public
+     * @param  int  $index
+     * @return boolean
+     */
+    public function isSourceFunction( $index ) {
+        return is_array( $this->tokens[ $index ] ) && '__is' === $this->tokens[ $index ][1];
+    }
+
+    /**
+     * Takes an index number and returns the parameters passed to that function.
+     * Assumes that $index is the location of the function name.
+     *
+     * @access public
+     * @param  int $index
+     * @return array
+     */
+    public function getFunctionArguments( $index ) {
+
+        $foundArgs = array();
+
+        for ( $i = $index; $i < $count = count( $this->tokens ); $i++ ) {
+
+            // If it's not an array then it's probably a bracket.
+            if ( ! is_array( $this->tokens[ $i ] ) ) {
+                // Break on opening function bracket.
+                if ( '{' === $this->tokens[ $i ] ) {
+                    break;
+                }
+
+            } else {
+
+                if ( 'T_CONSTANT_ENCAPSED_STRING' === token_name( $this->tokens[ $i ][0] ) ) {
+                    $foundArgs[] = trim( strtolower( $this->tokens[ $i ][1] ), "'" );
+                }
+
+            }
+
+        }
+
+        return $foundArgs;
+
+    }
 
 }
