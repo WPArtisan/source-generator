@@ -296,7 +296,7 @@ class BuildCommand extends Command
 
 
                 // Check for variables.
-                if ( 'T_VARIABLE' == token_name( $token[0] ) && $this->isSourceFunction( $i ) && in_array( $package, $this->getFunctionArguments( $i ) ) ) {
+                if ( 'T_VARIABLE' == token_name( $token[0] ) && $this->isSourceFunction( $i ) ) {
 
                     // Find the start.
                     $removeFrom = $i;
