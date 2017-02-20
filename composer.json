@@ -14,7 +14,7 @@
     },
     "autoload": {
         "psr-4": {
-            "WPArtisan\\": "src/WPArtisan"
+            "WPArtisan\\": "src"
         }
     },
     "bin": ["bin/wpartisan"]
