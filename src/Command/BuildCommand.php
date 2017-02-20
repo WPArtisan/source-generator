@@ -62,6 +62,7 @@ class BuildCommand extends Command
                 'circle.yml',
                 'composer.json',
                 'composer.lock',
+                'ruleset.xml',
             ];
 
             // Filter out the exclude folders & files.
