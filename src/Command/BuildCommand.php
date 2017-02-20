@@ -14,7 +14,7 @@ class BuildCommand extends Command
 {
 
     public $packages = [
-        'source'  => '==IGNORED==',
+        'source'  => 'source', // Not an actual package. A hacky way of doing source only params.
         'free'    => 'wp-native-articles',
         'premium' => 'wp-native-articles-premium',
     ];

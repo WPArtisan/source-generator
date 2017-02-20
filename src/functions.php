@@ -8,6 +8,10 @@ if ( ! function_exists( '__is' ) ) :
      * @return boolean [description]
      */
     function __is( $package ) {
+        if ( 'source' === $package ) {
+            return true;
+        }
+
         return defined( 'WPA_SG_PACKAGE' ) && WPA_SG_PACKAGE === $package;
     }
 endif;
