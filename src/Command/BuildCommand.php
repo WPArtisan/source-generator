@@ -296,7 +296,7 @@ class BuildCommand extends Command
 
 
                 // Check for variables.
-                if ( 'T_VARIABLE' == token_name( $token[0] ) && $token[1] === '__is' . ucfirst( $package ) ) {
+                if ( 'T_VARIABLE' == token_name( $token[0] ) && false !== strrpos( $token[1], '__is' . ucfirst( $package ) ) ) {
 
                     // Find the start.
                     $removeFrom = $i;
