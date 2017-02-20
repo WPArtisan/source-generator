@@ -344,7 +344,13 @@ class BuildCommand extends Command
 
                 }
 
-                if ( 'T_STRING' == token_name( $token[0] ) && $this->isSourceFunction( $i ) && in_array( $package, $this->getFunctionArguments( $i ) ) ) {
+                if ( 'T_STRING' == token_name( $token[0] ) &&
+                    (
+                        ( false !== strrpos( $token[1], '__is' . ucfirst( $package ) ) )
+                        ||
+                        ( $this->isSourceFunction( $i ) && in_array( $package, $this->getFunctionArguments( $i ) ) )
+                    )
+                ) {
 
                     // Find opening IF statement
                     $k = $i - 1;
