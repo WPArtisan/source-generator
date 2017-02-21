@@ -63,6 +63,7 @@ class BuildCommand extends Command
                 'composer.json',
                 'composer.lock',
                 'ruleset.xml',
+                'wordpress',
             ];
 
             // Filter out the exclude folders & files.
