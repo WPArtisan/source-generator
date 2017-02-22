@@ -65,6 +65,8 @@ class BuildCommand extends Command
                 'ruleset.xml',
                 'wordpress',
                 'wp-cli.phar',
+                'deploy',
+                'deploy.sh',
             ];
 
             // Filter out the exclude folders & files.
