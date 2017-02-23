@@ -67,6 +67,7 @@ class BuildCommand extends Command
                 'wp-cli.phar',
                 'deploy',
                 'deploy.sh',
+                'dist',
             ];
 
             // Filter out the exclude folders & files.
