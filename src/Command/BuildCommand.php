@@ -55,6 +55,10 @@ class BuildCommand extends Command
             $exclude = [
                 $buildDir,
                 '.git',
+                'bin',
+                'tests',
+                'phpcs.ruleset.xml',
+                'phpunit.xml.dist',
                 'vendor',
                 'source-generator',
                 '.DS_Store',
