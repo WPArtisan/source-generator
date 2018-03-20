@@ -64,8 +64,6 @@ class BuildCommand extends Command
                 '.DS_Store',
                 '.gitignore',
                 'circle.yml',
-                'composer.json',
-                'composer.lock',
                 'ruleset.xml',
                 'wordpress',
                 'wp-cli.phar',
